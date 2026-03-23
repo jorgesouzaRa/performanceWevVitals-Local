@@ -24,6 +24,41 @@ Auditoria automatizada com **Playwright** (axe-core), **Lighthouse** (performanc
    - `pagespeedInsights.enabled`: quando `true`, tenta buscar **dados de campo (CrUX)** via [PageSpeed Insights API](https://developers.google.com/speed/docs/insights/v5/get-started) — precisa de `PAGESPEED_API_KEY` (ver abaixo).
    - `lighthouse.labThrottling`: `default` (throttling de laboratório completo) ou `devtools-lite` (mais leve; ainda é laboratório, não substitui o CrUX).
 
+## URLs analisadas
+
+A lista abaixo corresponde ao template **`config/urls.example.json`** (o mesmo conjunto que passa a usar quando copia para `config/urls.json`). O relatório HTML (`reports/relatorio-*.html`) gera **uma secção por URL** (ligações na tabela resumo); a ordem segue a expansão em `expandTargetUrls` em `src/config.ts`.
+
+No protótipo **Web Vitals & A11y** (Google AI Studio), a navegação lateral usa rótulos curtos (caminho ou host); na tabela, a coluna **URL completa** é a que o audit usa.
+
+### `staticPaths` (rotas no `baseUrl` e URLs absolutas)
+
+| Rótulo (UI) | URL auditada |
+|-------------|--------------|
+| `/` | `https://www.reclameaqui.com.br/` |
+| `/detector-site-confiavel` | `https://www.reclameaqui.com.br/detector-site-confiavel` |
+| `/descontos` | `https://www.reclameaqui.com.br/descontos` |
+| `/compare` | `https://www.reclameaqui.com.br/compare` |
+| `blog.reclameaqui.com.br` | `https://blog.reclameaqui.com.br/` |
+| Reclamação Nubank (título longo) | `https://www.reclameaqui.com.br/nubank/insatisfacao-com-limite-de-credito-e-solicitacao-de-reducao-drastica-para-r100-na-nubank_hLo2aV8oAYzrzFCb` |
+| Reclamação Fatal Model (título longo) | `https://www.reclameaqui.com.br/fatal-model/site-obriga-a-enviar-foto-do-rosto_1mto_uREn40N9gpZ` |
+
+### `companySlugs`: `nubank`, `fatal-model`
+
+Para **cada** slug são acrescentadas três páginas:
+
+| Slug | Rotas geradas |
+|------|----------------|
+| `nubank` | `/empresa/nubank`, `/empresa/nubank/sobre`, `/empresa/nubank/leitura-de-reclamacao` |
+| `fatal-model` | `/empresa/fatal-model`, `/empresa/fatal-model/sobre`, `/empresa/fatal-model/leitura-de-reclamacao` |
+
+URLs completas: `https://www.reclameaqui.com.br` + caminho acima (sem duplicar barra).
+
+### Secção geral no HTML (monetização)
+
+Fora da lista por URL, o relatório inclui o bloco **Monetização / anúncios** (trecho de `doc_ mapeamentoADS/Mapeamento ADS ReclameAQUI.txt` e tabela de riscos ads × Web Vitals), alinhado ao item **Inventário de Ads & Riscos** no painel de referência.
+
+Documentação espelhada: [docs/urls-analisadas.md](docs/urls-analisadas.md).
+
 ### Alinhar com o PageSpeed Insights (“utilizadores reais”)
 
 No PSI, a secção **“Discover what your real users are experiencing”** vem do **Chrome UX Report (CrUX)** — percentis agregados (~28 dias), não de um único Lighthouse.
