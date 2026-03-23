@@ -1,0 +1,266 @@
+Pelos layouts do Figma que você mandou, as páginas/URLs com inventário de ads que eu consegui identificar são estas:
+
+**1. Homepage**
+
+* `/`
+* Evidência: o primeiro board mostra a home atual e depois o “Redesign da Homepage”.
+* Observação: essa eu estou inferindo pelo layout, porque o frame não mostra a rota no topo como os outros.
+
+**2. Brand Page da empresa**
+
+* `/empresa/{companyId}`
+* No exemplo do Figma: página da Temu.
+
+**3. Sobre da empresa**
+
+* `/empresa/{companyId}/sobre`
+
+**4. Leitura de reclamação da empresa**
+
+* `/empresa/{companyId}/leitura-de-reclamacao`
+* O frame está nomeado assim; pode valer confirmar no roteamento real se existe slug adicional na URL final.
+
+**5. Detector de Site Confiável**
+
+* `/detector-site-confiavel`
+
+**6. Descontos**
+
+* `/descontos`
+
+**7. Compare**
+
+* `/compare`
+
+**8. Blog**
+
+* `blog.reclameaqui.com.br`
+* Pelo Figma, há inventário tanto desktop quanto mobile.
+
+---
+
+## Onde aparecem ads nessas páginas
+
+Pelo que dá para ler nos frames, o padrão de posições é mais ou menos este:
+
+**Homepage**
+
+* Header/topo
+* Meio 1
+* Meio 2
+* Bottom/footer area
+* Mobile com blocos equivalentes ao longo da rolagem
+
+**Brand Page `/empresa/{companyId}`**
+
+* Header
+* Home/Top block
+* Sidebar desktop
+* Middle desktop
+* Bottom desktop
+* Header mobile
+* Sticky mobile
+* Middle 1 mobile
+* Middle 2 mobile
+* Bottom mobile
+
+**Brand Page `/empresa/{companyId}/sobre`**
+
+* Header desktop
+* Sidebar desktop
+* Header mobile
+* Middle mobile
+
+**Leitura de reclamação `/empresa/{companyId}/leitura-de-reclamacao`**
+
+* Header desktop
+* Sidebar desktop
+* Middle desktop
+* Bottom desktop
+* Header mobile
+* “Sobre”/bloco intermediário mobile
+* Middle 1 mobile
+* Middle 2 mobile
+
+**Detector de Site Confiável**
+
+* Header desktop
+* Middle mobile
+
+**Descontos**
+
+* Sticky desktop
+* Sticky/bottom mobile
+
+**Compare**
+
+* Sticky desktop
+
+**Blog**
+
+* Pelo layout, há múltiplos placements no topo e no corpo da matéria, em desktop e mobile
+* Aqui vale mapear com mais cuidado porque o frame mostra vários pontos visuais, mas não consegui ler todos os nomes dos slots
+
+---
+
+# Como eu montaria um plano de melhoria
+
+Eu dividiria em 4 frentes.
+
+## 1) Fazer o inventário oficial de páginas + slots
+
+Monte uma planilha com estas colunas:
+
+* Página
+* URL/padrão de rota
+* Plataforma: desktop/mobile
+* Nome do slot
+* Posição visual
+* Tipo: header, sticky, in-content, sidebar, footer
+* Above the fold? sim/não
+* Tamanho(s)
+* Lazy load? sim/não
+* Refresh? sim/não
+* Dono da página
+* Dono da monetização
+* Observações
+
+Exemplo de linha:
+
+* Brand Page | `/empresa/{companyId}` | mobile | `RA_Empresa_Sticky_Mobile` | entre header e conteúdo principal | sticky | above the fold | 320x100 | sim | não
+
+---
+
+## 2) Separar por prioridade de impacto
+
+Sugestão de prioridade:
+
+**P0**
+
+* Homepage
+* `/empresa/{companyId}`
+* `/empresa/{companyId}/leitura-de-reclamacao`
+
+Essas tendem a concentrar tráfego e receita.
+
+**P1**
+
+* `/empresa/{companyId}/sobre`
+* `/descontos`
+* `/compare`
+
+**P2**
+
+* `/detector-site-confiavel`
+* `blog.reclameaqui.com.br`
+
+---
+
+## 3) Criar um score de qualidade por página
+
+Para cada URL, avaliar 5 coisas:
+
+**a) Quantidade de anúncios**
+
+* excesso de blocos
+* duplicidade visual
+* competição entre sticky + in-content
+
+**b) Posição**
+
+* se empurra conteúdo crítico
+* se quebra a leitura
+* se prejudica LCP/CLS/INP
+
+**c) Timing de carregamento**
+
+* carrega cedo demais
+* disputa com conteúdo principal
+* bloqueia renderização
+
+**d) Adequação do layout**
+
+* desktop e mobile têm densidade coerente?
+* sidebar em mobile foi transformado em bloco no lugar certo?
+* sticky está agressivo?
+
+**e) Valor x atrito**
+
+* o slot gera valor real?
+* ou só adiciona peso, distração e risco de queda em UX/Core Web Vitals?
+
+Você pode usar uma nota simples de 1 a 5 em cada eixo e chegar num ranking das páginas mais problemáticas.
+
+---
+
+## 4) Plano de ação prático
+
+### Fase 1 — Mapeamento
+
+* levantar todas as rotas reais em produção
+* associar cada rota aos slots do Ad Manager
+* validar quais páginas realmente estão recebendo impressão
+
+### Fase 2 — Diagnóstico
+
+* cruzar com:
+
+  * pageviews
+  * RPM/eCPM/viewability
+  * fill rate
+  * CTR
+  * CLS/LCP/INP
+  * bounce/engajamento
+* identificar slots com:
+
+  * baixa viewability
+  * baixa receita
+  * alto impacto visual/técnico
+
+### Fase 3 — Redesign de monetização
+
+Regras que eu adotaria:
+
+* reduzir sobrecarga above the fold
+* manter no máximo 1 ponto dominante de monetização acima da dobra
+* evitar sticky agressivo + outro slot muito próximo
+* lazy load real para slots abaixo da dobra
+* reservar espaço para o ad antes de renderizar para evitar CLS
+* só carregar slot quando perto do viewport
+* rever tamanhos que quebram mobile
+* padronizar espaçamento entre conteúdo e anúncio
+
+### Fase 4 — Experimentos
+
+Rodar A/B ou holdout com hipóteses como:
+
+* remover 1 slot do topo em mobile
+* trocar sticky por slot in-content
+* atrasar carregamento do slot até após LCP
+* reduzir quantidade de slots na leitura de reclamação
+* consolidar dois slots fracos em um melhor posicionado
+
+---
+
+# O que eu sugeriria como entregável imediato
+
+Você pode criar agora uma **matriz-mãe de monetização** com este escopo inicial:
+
+1. `/`
+2. `/empresa/{companyId}`
+3. `/empresa/{companyId}/sobre`
+4. `/empresa/{companyId}/leitura-de-reclamacao`
+5. `/detector-site-confiavel`
+6. `/descontos`
+7. `/compare`
+8. `blog.reclameaqui.com.br`
+
+E para cada uma:
+
+* screenshot desktop
+* screenshot mobile
+* lista dos slots
+* responsável
+* métricas do slot
+* problemas percebidos
+* hipótese de melhoria

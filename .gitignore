@@ -1,0 +1,9 @@
+node_modules/
+dist/
+config/urls.json
+reports/*.md
+reports/*.html
+playwright-report/
+test-results/
+.env
+*.log
