@@ -1,3 +1,5 @@
+import "dotenv/config";
+
 import { expandTargetUrls, loadConfig, projectRoot } from "./config.js";
 import { openHtmlReport } from "./open-report.js";
 import { AuditProgressReporter, countAuditSteps } from "./progress.js";
@@ -19,9 +21,23 @@ async function main() {
   }
 
   const apiKey = process.env.PAGESPEED_API_KEY?.trim();
+  const requirePageSpeedApi =
+    process.env.REQUIRE_PAGESPEED_API === "1" ||
+    process.env.REQUIRE_PAGESPEED_API?.toLowerCase() === "true";
+
+  if (requirePageSpeedApi && !apiKey) {
+    console.error(
+      "audit-PageSpeedAPI: defina PAGESPEED_API_KEY no .env ou no ambiente (PageSpeed Insights API ativa na Google Cloud)."
+    );
+    process.exit(1);
+  }
+
   let fetchCrux = false;
   let cruxSkipReason = "CrUX não configurado.";
-  if (!cfg.pagespeedInsights.enabled) {
+  if (requirePageSpeedApi) {
+    fetchCrux = true;
+    cruxSkipReason = "";
+  } else if (!cfg.pagespeedInsights.enabled) {
     cruxSkipReason =
       "pagespeedInsights.enabled está false em config — dados de campo desativados.";
   } else if (!apiKey) {

@@ -68,19 +68,39 @@ O **Lighthouse local** no seu PC é outra coisa: um carregamento sintético, red
 Para o relatório incluir uma tabela **CrUX** parecida com a do PSI:
 
 1. Crie um projeto na Google Cloud e ative **PageSpeed Insights API**.
-2. Crie uma chave de API e exporte no shell antes do audit:
+2. Crie uma chave de API e defina-a de um destes modos:
+   - **Ficheiro `.env`** na raiz do projeto (recomendado; já está no `.gitignore`):
 
-   ```bash
-   export PAGESPEED_API_KEY="sua-chave"
-   npm run audit
-   ```
+     ```
+     PAGESPEED_API_KEY=sua_chave_aqui
+     ```
+
+     O `npm run audit` carrega o `.env` automaticamente (`dotenv`).
+
+   - **Ou** exporte no shell: `export PAGESPEED_API_KEY="sua-chave"` antes de `npm run audit`.
 
 Sem a chave, o relatório mostra só Lighthouse em laboratório e um aviso no stderr.
 
 ## Execução
 
+### Testar a chave PageSpeed (CrUX mobile + desktop)
+
+```bash
+npm run test:pagespeed-key
+```
+
+Carrega o `.env`, chama a API nas duas estratégias por URL e imprime o resultado (a chave **não** é mostrada).
+
+URLs predefinidas: raiz do site, reclamação Fatal Model (`reativacao-de-site-banido-…`) e `/detector-site-confiavel/`. Uma URL só: `TEST_URL=https://exemplo.com/ npm run test:pagespeed-key`. Lista à mão: `TEST_URLS="https://a/,https://b/" npm run test:pagespeed-key`.
+
 ```bash
 npm run audit
+```
+
+Para **garantir** dados de campo via **PageSpeed Insights API** (ignora `pagespeedInsights.enabled: false` e falha logo se faltar `PAGESPEED_API_KEY`):
+
+```bash
+npm run audit-PageSpeedAPI
 ```
 
 São gerados:
