@@ -55,10 +55,15 @@ async function main(): Promise<void> {
 
     if (mobile.ok) {
       const d = mobile.data;
+      const psi = d.psiLabScores;
+      const psiHint =
+        psi && psi.performance != null
+          ? ` · PSI lab perf=${Math.round(psi.performance * 100)}%`
+          : "";
       line(
         "mobile",
         true,
-        `CrUX LCP=${d.lcpMs}ms INP=${d.inpMs}ms CLS=${d.cls} categoria=${d.overallCategory ?? "—"}`,
+        `CrUX [${d.fieldDataScope ?? "—"}] LCP=${d.lcpMs}ms INP=${d.inpMs}ms CLS=${d.cls} · ${d.overallCategory ?? "—"}${psiHint}`,
       );
     } else {
       line("mobile", false, mobile.error);
@@ -67,10 +72,15 @@ async function main(): Promise<void> {
 
     if (desktop.ok) {
       const d = desktop.data;
+      const psi = d.psiLabScores;
+      const psiHint =
+        psi && psi.performance != null
+          ? ` · PSI lab perf=${Math.round(psi.performance * 100)}%`
+          : "";
       line(
         "desktop",
         true,
-        `CrUX LCP=${d.lcpMs}ms INP=${d.inpMs}ms CLS=${d.cls} categoria=${d.overallCategory ?? "—"}`,
+        `CrUX [${d.fieldDataScope ?? "—"}] LCP=${d.lcpMs}ms INP=${d.inpMs}ms CLS=${d.cls} · ${d.overallCategory ?? "—"}${psiHint}`,
       );
     } else {
       line("desktop", false, desktop.error);

@@ -75,7 +75,7 @@ export async function auditUrl(
   const fetchCrux = !!runOpts?.fetchCruxField && !!key;
 
   if (fetchCrux && key) {
-    hooks?.onPhaseStart(`PageSpeed Insights (CrUX campo) — ${su}`);
+    hooks?.onPhaseStart(`PageSpeed API (CrUX mobile+desktop + Lighthouse PSI) — ${su}`);
     const { mobile, desktop } = await fetchBothStrategies(url, key);
     result.cruxField = { status: "fetched", mobile, desktop };
     hooks?.onPhaseEnd();

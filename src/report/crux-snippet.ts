@@ -1,5 +1,5 @@
 import type { UrlAuditResult } from "../runner.js";
-import type { CruxFieldMetrics } from "../pagespeed-field.js";
+import type { CruxFieldMetrics, PsiLabScores } from "../pagespeed-field.js";
 import { fmtMs } from "./helpers.js";
 
 const PSI = "https://pagespeed.web.dev/";
@@ -18,35 +18,94 @@ function rowMetric(label: string, mob: string, desk: string): string {
   return `| ${label} | ${mob} | ${desk} |\n`;
 }
 
+function tagCat(cat: string | null | undefined): string {
+  if (!cat) return "";
+  return ` (${cat})`;
+}
+
+function cellTime(ms: number | null, cat: string | null | undefined): string {
+  if (ms == null) return "—";
+  return `${fmtMs(ms)}${tagCat(cat)}`;
+}
+
+function cellCls(c: number | null, cat: string | null | undefined): string {
+  if (c === null) return "—";
+  return `${fmtCls(c)}${tagCat(cat)}`;
+}
+
+function cellInp(ms: number | null, cat: string | null | undefined): string {
+  if (ms == null) return "—";
+  return `${fmtInp(ms)}${tagCat(cat)}`;
+}
+
+function fmtPsiScore(s: number | null): string {
+  if (s == null) return "—";
+  return `${Math.round(s * 100)}%`;
+}
+
+function renderPsiLabMarkdown(mob: PsiLabScores | null, desk: PsiLabScores | null): string {
+  if (!mob && !desk) return "";
+  const has =
+    (mob &&
+      (mob.performance != null ||
+        mob.accessibility != null ||
+        mob.bestPractices != null ||
+        mob.seo != null)) ||
+    (desk &&
+      (desk.performance != null ||
+        desk.accessibility != null ||
+        desk.bestPractices != null ||
+        desk.seo != null));
+  if (!has) return "";
+
+  let md =
+    "\n**Lighthouse (laboratório Google / mesmo run da API):**\n\n| Categoria | Mobile | Desktop |\n|---|---|---|\n";
+  md += rowMetric("Performance", fmtPsiScore(mob?.performance ?? null), fmtPsiScore(desk?.performance ?? null));
+  md += rowMetric(
+    "Acessibilidade",
+    fmtPsiScore(mob?.accessibility ?? null),
+    fmtPsiScore(desk?.accessibility ?? null)
+  );
+  md += rowMetric(
+    "Boas práticas",
+    fmtPsiScore(mob?.bestPractices ?? null),
+    fmtPsiScore(desk?.bestPractices ?? null)
+  );
+  md += rowMetric("SEO", fmtPsiScore(mob?.seo ?? null), fmtPsiScore(desk?.seo ?? null));
+  md +=
+    "\n_Valores do PSI na nuvem; o relatório também inclui Lighthouse executado localmente — podem diferir._\n";
+  return md;
+}
+
 function renderMetricsTable(mob: CruxFieldMetrics | null, desk: CruxFieldMetrics | null): string {
   if (!mob && !desk) return "";
   let md = "| Métrica (≈ p75 campo) | Mobile | Desktop |\n|---|---|---|\n";
-  md += rowMetric(
-    "LCP",
-    mob?.lcpMs != null ? fmtMs(mob.lcpMs) : "—",
-    desk?.lcpMs != null ? fmtMs(desk.lcpMs) : "—"
-  );
+  md += rowMetric("LCP", cellTime(mob?.lcpMs ?? null, mob?.lcpCategory), cellTime(desk?.lcpMs ?? null, desk?.lcpCategory));
   md += rowMetric(
     "INP",
-    fmtInp(mob?.inpMs ?? null),
-    fmtInp(desk?.inpMs ?? null)
+    cellInp(mob?.inpMs ?? null, mob?.inpCategory),
+    cellInp(desk?.inpMs ?? null, desk?.inpCategory)
   );
-  md += rowMetric(
-    "CLS",
-    fmtCls(mob?.cls ?? null),
-    fmtCls(desk?.cls ?? null)
-  );
+  md += rowMetric("CLS", cellCls(mob?.cls ?? null, mob?.clsCategory), cellCls(desk?.cls ?? null, desk?.clsCategory));
   md += rowMetric(
     "FCP",
-    mob?.fcpMs != null ? fmtMs(mob.fcpMs) : "—",
-    desk?.fcpMs != null ? fmtMs(desk.fcpMs) : "—"
+    cellTime(mob?.fcpMs ?? null, mob?.fcpCategory),
+    cellTime(desk?.fcpMs ?? null, desk?.fcpCategory)
   );
   md += rowMetric(
     "TTFB",
-    mob?.ttfbMs != null ? fmtMs(mob.ttfbMs) : "—",
-    desk?.ttfbMs != null ? fmtMs(desk.ttfbMs) : "—"
+    cellTime(mob?.ttfbMs ?? null, mob?.ttfbCategory),
+    cellTime(desk?.ttfbMs ?? null, desk?.ttfbCategory)
   );
   return md;
+}
+
+function scopeNoteMd(mob: CruxFieldMetrics | null, desk: CruxFieldMetrics | null): string {
+  const scope = mob?.fieldDataScope ?? desk?.fieldDataScope;
+  if (scope === "origin") {
+    return "_CrUX ao nível da **origem** (a página não tinha amostras URL no CrUX; agregado da origem, como no PSI)._\n\n";
+  }
+  return "";
 }
 
 export function cruxIntroMarkdown(): string {
@@ -78,13 +137,19 @@ export function cruxBlockMarkdown(r: UrlAuditResult): string {
     md += `**Desktop:** ${desktop.error}\n\n`;
   }
   if (mobile.ok && desktop.ok) {
+    md += scopeNoteMd(mobile.data, desktop.data);
     md += `**Geral:** mobile \`${mobile.data.overallCategory ?? "—"}\` · desktop \`${desktop.data.overallCategory ?? "—"}\`\n\n`;
     md += renderMetricsTable(mobile.data, desktop.data);
+    md += renderPsiLabMarkdown(mobile.data.psiLabScores, desktop.data.psiLabScores);
     md += `\n`;
   } else if (mobile.ok) {
+    md += scopeNoteMd(mobile.data, null);
     md += renderMetricsTable(mobile.data, null);
+    md += renderPsiLabMarkdown(mobile.data.psiLabScores, null);
   } else if (desktop.ok) {
+    md += scopeNoteMd(null, desktop.data);
     md += renderMetricsTable(null, desktop.data);
+    md += renderPsiLabMarkdown(null, desktop.data.psiLabScores);
   }
   md += `\n`;
   return md;
@@ -105,6 +170,61 @@ export function cruxIntroHtml(): string {
 <p><strong>Laboratório</strong> — um carregamento sintético na sua máquina (Lighthouse). Os valores costumam ser <em>piores</em> que o CrUX por causa do throttling e de um único cold load; servem para oportunidades técnicas e regressões.</p>
 <p class="muted">Metas comuns no campo: LCP ≤ 2,5 s, INP ≤ 200 ms, CLS ≤ 0,1.</p>
 </section>`;
+}
+
+function htmlCellTime(ms: number | null, cat: string | null | undefined): string {
+  if (ms == null) return "—";
+  const t = esc(fmtMs(ms));
+  return cat ? `${t} <span class="muted">(${esc(cat)})</span>` : t;
+}
+
+function htmlCellCls(c: number | null, cat: string | null | undefined): string {
+  if (c === null) return "—";
+  const t = esc(fmtCls(c));
+  return cat ? `${t} <span class="muted">(${esc(cat)})</span>` : t;
+}
+
+function htmlCellInp(ms: number | null, cat: string | null | undefined): string {
+  if (ms == null) return "—";
+  const t = esc(fmtInp(ms));
+  return cat ? `${t} <span class="muted">(${esc(cat)})</span>` : t;
+}
+
+function htmlScopeNote(mob: CruxFieldMetrics | null, desk: CruxFieldMetrics | null): string {
+  const scope = mob?.fieldDataScope ?? desk?.fieldDataScope;
+  if (scope !== "origin") return "";
+  return `<p class="muted">CrUX ao nível da <strong>origem</strong> — a página não tinha amostras suficientes no CrUX para métricas URL; mostram-se dados agregados da origem (como no PSI).</p>`;
+}
+
+function renderPsiLabHtml(mob: PsiLabScores | null, desk: PsiLabScores | null): string {
+  const row = (label: string, vm: string, vd: string) =>
+    `<tr><td>${esc(label)}</td><td>${vm}</td><td>${vd}</td></tr>`;
+  const pct = (s: number | null) => (s == null ? "—" : esc(fmtPsiScore(s)));
+
+  if (!mob && !desk) return "";
+  const hasMob =
+    mob &&
+    (mob.performance != null ||
+      mob.accessibility != null ||
+      mob.bestPractices != null ||
+      mob.seo != null);
+  const hasDesk =
+    desk &&
+    (desk.performance != null ||
+      desk.accessibility != null ||
+      desk.bestPractices != null ||
+      desk.seo != null);
+  if (!hasMob && !hasDesk) return "";
+
+  let inner = `<h4>Lighthouse (laboratório Google / PSI)</h4>`;
+  inner += `<p class="muted">Mesmo pedido à API; complementa o Lighthouse executado na sua máquina.</p>`;
+  inner += `<table class="data-table"><thead><tr><th>Categoria</th><th>Mobile</th><th>Desktop</th></tr></thead><tbody>`;
+  inner += row("Performance", pct(mob?.performance ?? null), pct(desk?.performance ?? null));
+  inner += row("Acessibilidade", pct(mob?.accessibility ?? null), pct(desk?.accessibility ?? null));
+  inner += row("Boas práticas", pct(mob?.bestPractices ?? null), pct(desk?.bestPractices ?? null));
+  inner += row("SEO", pct(mob?.seo ?? null), pct(desk?.seo ?? null));
+  inner += `</tbody></table>`;
+  return inner;
 }
 
 export function cruxBlockHtml(r: UrlAuditResult): string {
@@ -133,32 +253,43 @@ export function cruxBlockHtml(r: UrlAuditResult): string {
   if (mobile.ok && desktop.ok) {
     const m = mobile.data;
     const d = desktop.data;
+    body += htmlScopeNote(m, d);
     body += `<p class="muted">Categoria geral: mobile <strong>${esc(m.overallCategory ?? "—")}</strong> · desktop <strong>${esc(d.overallCategory ?? "—")}</strong></p>`;
     body += `<table class="data-table"><thead><tr><th>Métrica (≈ p75)</th><th>Mobile</th><th>Desktop</th></tr></thead><tbody>`;
-    body += cells("LCP", m.lcpMs != null ? esc(fmtMs(m.lcpMs)) : "—", d.lcpMs != null ? esc(fmtMs(d.lcpMs)) : "—");
-    body += cells("INP", esc(fmtInp(m.inpMs)), esc(fmtInp(d.inpMs)));
-    body += cells("CLS", esc(fmtCls(m.cls)), esc(fmtCls(d.cls)));
-    body += cells("FCP", m.fcpMs != null ? esc(fmtMs(m.fcpMs)) : "—", d.fcpMs != null ? esc(fmtMs(d.fcpMs)) : "—");
-    body += cells("TTFB", m.ttfbMs != null ? esc(fmtMs(m.ttfbMs)) : "—", d.ttfbMs != null ? esc(fmtMs(d.ttfbMs)) : "—");
+    body += cells("LCP", htmlCellTime(m.lcpMs, m.lcpCategory), htmlCellTime(d.lcpMs, d.lcpCategory));
+    body += cells("INP", htmlCellInp(m.inpMs, m.inpCategory), htmlCellInp(d.inpMs, d.inpCategory));
+    body += cells("CLS", htmlCellCls(m.cls, m.clsCategory), htmlCellCls(d.cls, d.clsCategory));
+    body += cells("FCP", htmlCellTime(m.fcpMs, m.fcpCategory), htmlCellTime(d.fcpMs, d.fcpCategory));
+    body += cells("TTFB", htmlCellTime(m.ttfbMs, m.ttfbCategory), htmlCellTime(d.ttfbMs, d.ttfbCategory));
     body += `</tbody></table>`;
+    body += renderPsiLabHtml(m.psiLabScores, d.psiLabScores);
   } else if (mobile.ok) {
     const m = mobile.data;
-    body += `<table class="data-table"><thead><tr><th>Métrica</th><th>Mobile</th></tr></thead><tbody>`;
-    body += `<tr><td>LCP</td><td>${m.lcpMs != null ? esc(fmtMs(m.lcpMs)) : "—"}</td></tr>`;
-    body += `<tr><td>INP</td><td>${esc(fmtInp(m.inpMs))}</td></tr>`;
-    body += `<tr><td>CLS</td><td>${esc(fmtCls(m.cls))}</td></tr>`;
+    body += htmlScopeNote(m, null);
+    body += `<table class="data-table"><thead><tr><th>Métrica (≈ p75)</th><th>Mobile</th></tr></thead><tbody>`;
+    body += `<tr><td>LCP</td><td>${htmlCellTime(m.lcpMs, m.lcpCategory)}</td></tr>`;
+    body += `<tr><td>INP</td><td>${htmlCellInp(m.inpMs, m.inpCategory)}</td></tr>`;
+    body += `<tr><td>CLS</td><td>${htmlCellCls(m.cls, m.clsCategory)}</td></tr>`;
+    body += `<tr><td>FCP</td><td>${htmlCellTime(m.fcpMs, m.fcpCategory)}</td></tr>`;
+    body += `<tr><td>TTFB</td><td>${htmlCellTime(m.ttfbMs, m.ttfbCategory)}</td></tr>`;
     body += `</tbody></table>`;
+    body += renderPsiLabHtml(m.psiLabScores, null);
   } else if (desktop.ok) {
     const d = desktop.data;
-    body += `<table class="data-table"><thead><tr><th>Métrica</th><th>Desktop</th></tr></thead><tbody>`;
-    body += `<tr><td>LCP</td><td>${d.lcpMs != null ? esc(fmtMs(d.lcpMs)) : "—"}</td></tr>`;
-    body += `<tr><td>INP</td><td>${esc(fmtInp(d.inpMs))}</td></tr>`;
-    body += `<tr><td>CLS</td><td>${esc(fmtCls(d.cls))}</td></tr>`;
+    body += htmlScopeNote(null, d);
+    body += `<table class="data-table"><thead><tr><th>Métrica (≈ p75)</th><th>Desktop</th></tr></thead><tbody>`;
+    body += `<tr><td>LCP</td><td>${htmlCellTime(d.lcpMs, d.lcpCategory)}</td></tr>`;
+    body += `<tr><td>INP</td><td>${htmlCellInp(d.inpMs, d.inpCategory)}</td></tr>`;
+    body += `<tr><td>CLS</td><td>${htmlCellCls(d.cls, d.clsCategory)}</td></tr>`;
+    body += `<tr><td>FCP</td><td>${htmlCellTime(d.fcpMs, d.fcpCategory)}</td></tr>`;
+    body += `<tr><td>TTFB</td><td>${htmlCellTime(d.ttfbMs, d.ttfbCategory)}</td></tr>`;
     body += `</tbody></table>`;
+    body += renderPsiLabHtml(null, d.psiLabScores);
   }
 
   return `<section class="card crux-block">
 <h3>Dados de campo (CrUX / PageSpeed Insights)</h3>
+<p class="muted">Cada URL: duas chamadas à API (<strong>strategy=mobile</strong> e <strong>desktop</strong>) em paralelo.</p>
 ${body}
 </section>`;
 }
