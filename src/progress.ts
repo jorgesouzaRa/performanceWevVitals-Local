@@ -74,3 +74,8 @@ export function countAuditSteps(
     (runDesktop ? 1 : 0);
   return urlCount * perUrl;
 }
+
+/** Uma etapa por URL (chamadas mobile+desktop em paralelo dentro da etapa). */
+export function countPagespeedApiOnlySteps(urlCount: number): number {
+  return Math.max(1, urlCount);
+}

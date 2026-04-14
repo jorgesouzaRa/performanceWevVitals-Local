@@ -1,0 +1,10 @@
+{
+  "storageStatePath": "config/.auth/storage-state.json",
+  "login": {
+    "url": "https://green.reclameaqui.com.br/login/consumidor/",
+    "emailSelector": "#username",
+    "passwordSelector": "#password",
+    "submitSelector": "#login_novo_entrar",
+    "postLoginWaitMs": 4000
+  }
+}

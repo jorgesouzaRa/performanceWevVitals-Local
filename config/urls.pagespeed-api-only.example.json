@@ -1,0 +1,25 @@
+{
+  "baseUrl": "https://www.reclameaqui.com.br",
+  "companySlugs": [],
+  "staticPaths": ["/"],
+  "cookieConsentSelectors": [],
+  "navigationTimeoutMs": 60000,
+  "analysisMode": "pagespeed_api_only",
+  "pagespeedApiOnly": {
+    "locale": "pt-BR",
+    "categories": ["performance", "accessibility", "best-practices", "seo"],
+    "timeoutMs": 120000,
+    "retry": { "count": 2, "delayMs": 2000, "backoffMultiplier": 2 },
+    "concurrency": 2,
+    "saveRawPayload": false,
+    "rawOutputSubdir": "pagespeed-api-raw",
+    "cacheDir": ".cache/pagespeed-api",
+    "verbose": false
+  },
+  "pagespeedInsights": { "enabled": true },
+  "lighthouse": {
+    "runMobile": true,
+    "runDesktop": true,
+    "labThrottling": "devtools-lite"
+  }
+}

@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { chromium } from "playwright";
 import type { AuditConfig } from "./config.js";
 import { projectRoot as getRoot } from "./config.js";
+import type { BrowserAuthResolved } from "./browser-auth.js";
+import { ensureBrowserAuthState } from "./browser-auth.js";
 import { runAxeOnPage } from "./axe-audit.js";
 import { runLighthouseAudit } from "./lighthouse-audit.js";
 import { fetchBothStrategies } from "./pagespeed-field.js";
@@ -63,7 +65,8 @@ export async function auditUrl(
   url: string,
   cfg: AuditConfig,
   hooks?: AuditPhaseHooks,
-  runOpts?: RunAllAuditsOptions
+  runOpts?: RunAllAuditsOptions,
+  browserAuth?: BrowserAuthResolved
 ): Promise<UrlAuditResult> {
   const result: UrlAuditResult = {
     url,
@@ -91,7 +94,11 @@ export async function auditUrl(
   hooks?.onPhaseStart(`Playwright + axe — ${su}`);
 
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext();
+  const context = await browser.newContext(
+    browserAuth?.storageStatePathAbs
+      ? { storageState: browserAuth.storageStatePathAbs }
+      : {}
+  );
   try {
     const page = await context.newPage();
     page.setDefaultTimeout(cfg.navigationTimeoutMs);
@@ -119,15 +126,21 @@ export async function auditUrl(
 
   const th = cfg.lighthouse.labThrottling;
 
+  const lhCookie = browserAuth?.cookieHeaderForTargetUrl(url);
+
   if (cfg.lighthouse.runMobile) {
     hooks?.onPhaseStart(`Lighthouse mobile (lab) — ${su}`);
-    result.lighthouseMobile = await runLighthouseAudit(url, "mobile", th);
+    result.lighthouseMobile = await runLighthouseAudit(url, "mobile", th, {
+      cookieHeader: lhCookie,
+    });
     hooks?.onPhaseEnd();
   }
 
   if (cfg.lighthouse.runDesktop) {
     hooks?.onPhaseStart(`Lighthouse desktop (lab) — ${su}`);
-    result.lighthouseDesktop = await runLighthouseAudit(url, "desktop", th);
+    result.lighthouseDesktop = await runLighthouseAudit(url, "desktop", th, {
+      cookieHeader: lhCookie,
+    });
     hooks?.onPhaseEnd();
   }
 
@@ -140,10 +153,11 @@ export async function runAllAudits(
   hooks?: AuditPhaseHooks,
   runOpts?: RunAllAuditsOptions
 ): Promise<UrlAuditResult[]> {
+  const browserAuth = await ensureBrowserAuthState(cfg);
   const out: UrlAuditResult[] = [];
   for (let i = 0; i < urls.length; i++) {
     const u = urls[i];
-    out.push(await auditUrl(u, cfg, hooks, runOpts));
+    out.push(await auditUrl(u, cfg, hooks, runOpts, browserAuth));
     if (i < urls.length - 1) {
       await new Promise((r) => setTimeout(r, 2000));
     }

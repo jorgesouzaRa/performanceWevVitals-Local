@@ -4,9 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "test:pagespeed-key": "tsx scripts/test-pagespeed-key.ts",
     "audit": "tsx src/index.ts",
+    "audit:psi-api": "tsx src/index.ts --pagespeed-api-only",
+    "auth:login": "tsx scripts/auth-login.ts",
     "audit-PageSpeedAPI": "REQUIRE_PAGESPEED_API=1 tsx src/index.ts",
+    "audit-PageSpeedAPI:green": "REQUIRE_PAGESPEED_API=1 AUDIT_GREEN=1 tsx src/index.ts",
     "postinstall": "playwright install chromium"
   },
   "engines": {

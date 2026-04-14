@@ -1,9 +1,14 @@
 node_modules/
 dist/
 config/urls.json
+config/audit-urls.json
 reports/*.md
+reports/pagespeed-api-*.json
+reports/pagespeed-api-raw/
 reports/*.html
 playwright-report/
 test-results/
 .env
 *.log
+.cache/
+config/.auth/

@@ -72,10 +72,16 @@ function collectFailedAudits(
   return out;
 }
 
+export type LighthouseAuditOptions = {
+  /** Header `Cookie` para páginas que exigem sessão (ex.: mesmo estado que Playwright). */
+  cookieHeader?: string;
+};
+
 export async function runLighthouseAudit(
   url: string,
   formFactor: LighthouseFormFactor,
-  labThrottling: LabThrottlingPreset = "default"
+  labThrottling: LabThrottlingPreset = "default",
+  opts?: LighthouseAuditOptions
 ): Promise<LighthouseSummary> {
   const chromePath =
     process.env.CHROME_PATH?.trim() || chromium.executablePath();
@@ -91,6 +97,11 @@ export async function runLighthouseAudit(
       onlyCategories: ["performance", "accessibility"],
       locale: "pt",
     };
+
+    if (opts?.cookieHeader) {
+      flags.extraHeaders = { Cookie: opts.cookieHeader };
+      flags.disableStorageReset = true;
+    }
 
     if (formFactor === "desktop") {
       flags.formFactor = "desktop";

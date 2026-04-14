@@ -1,6 +1,44 @@
 # Performance Web Vitals + Acessibilidade (ReclameAQUI)
 
-Auditoria automatizada com **Playwright** (axe-core), **Lighthouse** (performance + acessibilidade) e relatório em Markdown.
+Auditoria automatizada com **Playwright** (axe-core), **Lighthouse** (performance + acessibilidade) e relatório em Markdown — ou, em modo opcional, **só a API oficial** do PageSpeed Insights (sem browser).
+
+## Modos de análise
+
+| Modo | Descrição |
+|------|------------|
+| `legacy` (padrão) | Playwright + axe + Lighthouse local (Chromium) + dados de campo (CrUX) opcionais via API. |
+| `pagespeed_api_only` | Apenas [PageSpeed Insights API v5](https://developers.google.com/speed/docs/insights/v5/reference/pagespeedapi/runpagespeed) (`runPagespeed`). Duas estratégias por URL (**mobile** e **desktop**). Sem scraping, sem Playwright, sem HTML do pagespeed.web.dev. |
+
+### Sessão logada (só modo `legacy`)
+
+Para auditar páginas **depois de login** (área autenticada):
+
+1. Em `config/urls.json`, adiciona `browserAuth` (ver exemplo em `config/browser-auth.example.json`).
+2. No `.env`, **nunca** colocar passwords no JSON — usa:
+   - `AUDIT_LOGIN_EMAIL` — email ou utilizador
+   - `AUDIT_LOGIN_PASSWORD` — palavra-passe
+3. Na **primeira** execução (ou quando quiseres renovar sessão), o sistema abre o Playwright, preenche o formulário, grava o estado em `storageStatePath` (por defeito `config/.auth/storage-state.json`, pasta no `.gitignore`).
+4. O **Playwright + axe** usa esse ficheiro; o **Lighthouse local** envia os mesmos cookies via header `Cookie` (URLs do mesmo site).
+5. **CrUX / PageSpeed API** (dados de campo) continuam **sem** a tua sessão — o Google não usa o teu login.
+6. **`npm run audit:psi-api`** ignora `browserAuth` (aviso no terminal).
+
+Comandos úteis:
+
+- `npm run auth:login` — só executa o login e grava o storage state (equivalente a forçar login).
+- `AUDIT_LOGIN_FORCE=1 npm run audit` — volta a logar mesmo que já exista ficheiro.
+- `AUTH_HEADED=1` — browser visível (útil se houver CAPTCHA ou passos manuais).
+
+### Modo `pagespeed_api_only`
+
+- **Chave:** `PAGESPEED_API_KEY` no `.env` ou ambiente (projeto Google Cloud com PageSpeed Insights API ativa).
+- **Ativar:** `analysisMode: "pagespeed_api_only"` em `config/urls.json`, ou `ANALYSIS_MODE=pagespeed_api_only`, ou flag `--pagespeed-api-only` (ex.: `npm run audit:psi-api`).
+- **Config de exemplo:** `config/urls.pagespeed-api-only.example.json` (locale, categorias, timeout, retry, concorrência, cache em `.cache/pagespeed-api`, `saveRawPayload`).
+- **Saídas em `reports/`:**
+  - `pagespeed-api-consolidated-AAAA-MM-DD.json` — JSON normalizado (scores, métricas lab, CrUX/field quando existir, audits, oportunidades/diagnósticos, screenshots refs, resumo com prioridades P1–P3).
+  - `pagespeed-api-executive-AAAA-MM-DD.md` — resumo executivo.
+  - `pagespeed-api-report-AAAA-MM-DD.html` — tabela para leitura rápida.
+- **Código:** `src/pagespeed-api-only/` (cliente HTTP, normalização, regras de texto, pipeline com retentativas, rate limit 429 e cache por hash).
+- **Testes:** `npm test`.
 
 ## Pré-requisitos
 
@@ -23,6 +61,9 @@ Auditoria automatizada com **Playwright** (axe-core), **Lighthouse** (performanc
    - `cookieConsentSelectors`: seletores Playwright para tentar aceitar cookies (opcional)
    - `pagespeedInsights.enabled`: quando `true`, tenta buscar **dados de campo (CrUX)** via [PageSpeed Insights API](https://developers.google.com/speed/docs/insights/v5/get-started) — precisa de `PAGESPEED_API_KEY` (ver abaixo).
    - `lighthouse.labThrottling`: `default` (throttling de laboratório completo) ou `devtools-lite` (mais leve; ainda é laboratório, não substitui o CrUX).
+   - `analysisMode`: omitir ou `"legacy"` para o fluxo completo; `"pagespeed_api_only"` para só API (ver secção acima).
+   - `pagespeedApiOnly`: opções do modo API-only (timeout, retry, `concurrency`, `cacheDir`, etc.).
+   - `browserAuth`: login opcional e caminho do storage state Playwright (só `legacy`); exemplo: `config/browser-auth.example.json`.
 
 ## URLs analisadas
 
@@ -149,6 +190,8 @@ CHROME_PATH=/usr/bin/google-chrome-stable npm run audit
 | `src/report/html.ts` | Relatório HTML visual |
 | `src/progress.ts` | Spinner e % no stderr |
 | `src/open-report.ts` | Abrir HTML no SO |
+| `src/pagespeed-api-only/*` | Modo só API: cliente, normalização, pipeline, relatórios JSON/MD/HTML |
+| `src/browser-auth.ts` | Login + `storageState` + cookies para Lighthouse |
 
 ## Observações
 
